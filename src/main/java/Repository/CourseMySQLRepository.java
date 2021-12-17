@@ -18,6 +18,11 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
         this.password = password;
     }
 
+    /**
+     *
+     * @param obj, object of type Course that will be inserted in the database
+     * @throws SQLException
+     */
     @Override
     public void create(Course obj) throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -31,6 +36,13 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
         connection.close();
     }
 
+    /**
+     *
+     * @return list of all courses in the database
+     * it is required to go through the courses table to get all courses and also through the enrolled table in the database
+     * to get the list of students for each course
+     * @throws SQLException
+     */
     @Override
     public List<Course> getAll() throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -64,12 +76,18 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
         return courses;
     }
 
+    /**
+     * because the number of credits of a course can be changed, it is required to go through the Students table multiple times,
+     * to update the total number of courses of each student associated to the course
+     * @param obj is a Course object that contains the new attributes for the course to be updated
+     * @throws SQLException
+     */
     @Override
     public void update(Course obj) throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
         Statement statement = connection.createStatement();
 
-        //we need to get the old number of credits to update the student with the new number
+        //getting the old number of credits to update the student with the new number
         String getNrCredits = String.format("select credits from courses where courseId=%d", obj.getCourseId());
         ResultSet oldCredits = statement.executeQuery(getNrCredits);
         int formerCredits = 0;
@@ -78,7 +96,7 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
         }
         statement.close();
 
-        //we need to update the number of credits of the new student
+        //updating the number of credits of the students enrolled to the course
         Statement statementUpdateCredits = connection.createStatement();
         String updateCredits = String.format("update students " +
                 "inner join enrolled on students.studentId=enrolled.studentId " +
@@ -86,7 +104,7 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
                 "where students.studentId = enrolled.studentId and enrolled.courseId=%d", formerCredits, obj.getCredits(), obj.getCourseId());
         int rows = statementUpdateCredits.executeUpdate(updateCredits);
 
-        //we update the Course with the new attributes
+        //updating the Course with the new attributes
         Statement statementUpdateCourse = connection.createStatement();
         String updateCourse = String.format("update courses set name=\"%s\", maxEnrollment=%d, credits=%d " +
                 "where courseId= %d", obj.getName(), obj.getMaxEnrollment(), obj.getCredits(), obj.getCourseId());
@@ -97,13 +115,14 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
         Statement statementEnrolled = connection.createStatement();
         ResultSet oldStudents = statementEnrolled.executeQuery(oldEnrolled);
 
-        //deleting no longer available enrollments
+
         while(oldStudents.next()){
             long studentId = oldStudents.getLong("studentId");
             if (newEnrolled.contains(studentId)){
                 newEnrolled.remove(studentId);
             }
             else{
+                //deleting no longer available enrollments
                 String deleteEnrollment = String.format("delete enrolled from enrolled where courseId=%d and studentId=%d", obj.getCourseId(), studentId);
                 Statement statementDelEnrollment = connection.createStatement();
                 int rows5 = statementDelEnrollment.executeUpdate(deleteEnrollment);
@@ -119,6 +138,7 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
         }
 
         while (newEnrolled.size() != 0){
+            //adding the new enrollments
             String insertEnrollment = String.format("insert into enrolled(studentId, courseId) values (%d, %d)",
                     newEnrolled.get(0), obj.getCourseId());
             Statement statementInsertEnrollment = connection.createStatement();
@@ -137,6 +157,12 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
         connection.close();
     }
 
+    /**
+     * course is deleted from the database, also the enrollments related to the course and the
+     * total credits of the students formerly enrolled to the course are updated
+     * @param obj, Course object to be deleted from the database
+     * @throws SQLException
+     */
     @Override
     public void delete(Course obj) throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -144,6 +170,7 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
         String oldCredits = String.format("select s.studentId, s.totalCredits from students s " +
                 "inner join enrolled e on s.studentId = e.studentId where e.courseId=%d", obj.getCourseId());
         ResultSet resultCredits = statement.executeQuery(oldCredits);
+
         while (resultCredits.next()) {
             long studentId = resultCredits.getLong("studentId");
             int credits = (int) resultCredits.getLong("totalCredits");
@@ -169,6 +196,9 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
         connection.close();
     }
 
+    /**
+     * sorts the Course repo in ascending order by the number of enrolled students
+     */
     public List<Course> sortRep() throws SQLException {
         List<Course> sortedC = this.getAll();
         sortedC.sort(Course::compareCourse);

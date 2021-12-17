@@ -17,6 +17,11 @@ public class TeacherMySQLRepository implements ICrudRepository<Teacher>{
         this.password = password;
     }
 
+    /**
+     *
+     * @param obj object of type Teacher that will be inserted in the database
+     * @throws SQLException
+     */
     @Override
     public void create(Teacher obj) throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -28,6 +33,13 @@ public class TeacherMySQLRepository implements ICrudRepository<Teacher>{
         connection.close();
     }
 
+    /**
+     *
+     * @return list of all teachers in the database
+     * it is required to go through the teachers table to get all courses and also through the enrolled table in the database
+     * to for the list of courses for each course
+     * @throws SQLException
+     */
     @Override
     public List<Teacher> getAll() throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -60,6 +72,11 @@ public class TeacherMySQLRepository implements ICrudRepository<Teacher>{
         return teachers;
     }
 
+    /**
+     *
+     * @param obj is a Teacher object that contains the new attributes for the teacher to be updated
+     * @throws SQLException
+     */
     @Override
     public void update(Teacher obj) throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -73,6 +90,12 @@ public class TeacherMySQLRepository implements ICrudRepository<Teacher>{
         connection.close();
     }
 
+    /**
+     * if a teacher is deleted, we also need to delete the courses he teaches, and the enrollments related to that course
+     * because courses are deleted, it is also required to update the total credits of the students formerly enrolled to the deleted courses
+     * @param obj, Teacher object to be deleted
+     * @throws SQLException
+     */
     @Override
     public void delete(Teacher obj) throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -81,7 +104,7 @@ public class TeacherMySQLRepository implements ICrudRepository<Teacher>{
         Statement statement = connection.createStatement();
         ResultSet result = statement.executeQuery(allTeachers);
         while (result.next()){
-            //we removed the credits of the course to be deleted from the total Credits of the student
+            //we remove the credits of the course to be deleted from the totalCredits of the student
             long courseID = result.getLong("courseId");
             long nrCredits = result.getLong("credits");
             Statement statementNrCredits = connection.createStatement();

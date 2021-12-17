@@ -18,6 +18,11 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
         this.password = password;
     }
 
+    /**
+     *
+     * @param obj, object of type Student that will be inserted in the database
+     * @throws SQLException
+     */
     @Override
     public void create(Student obj) throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -32,6 +37,13 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
 
     }
 
+    /**
+     *
+     * @return list of all students from the Database
+     * it is required to go through the students table to get all students and also through the enrolled table in the database
+     * to get the list of courses for each student
+     * @throws SQLException
+     */
     @Override
     public List<Student> getAll() throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -65,6 +77,12 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
         return students;
     }
 
+    /**
+     *need to add and delete the new/former enrollment based on the course list given as a parameter as part of the Student obj
+     * also the new number of total credits of the student needs to be calculated
+     * @param obj is a Student object that contains the new attributes for the Student to be updated
+     * @throws SQLException
+     */
     @Override
     public void update(Student obj) throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -77,6 +95,7 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
         while(oldCourses.next()){
             long courseId = oldCourses.getLong("courseId");
             if (newEnrolled.contains(courseId)){
+                //if a course is already enrolled and won't be deleted we need to increase the studentCredits(totalCredits)
                 String getCredit = String.format("select credits from courses where courseId=%d",courseId);
                 Statement statementNrCredits = connection.createStatement();
                 ResultSet resultCr = statementNrCredits.executeQuery(getCredit);
@@ -88,6 +107,7 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
                 statementNrCredits.close();
             }
             else{
+                //if a course is not in the list of courses, the enrollment is deleted
                 String deleteEnrollment = String.format("delete enrolled from enrolled where courseId=%d and studentId=%d", courseId, obj.getStudentId());
                 Statement statementDelEnrollment = connection.createStatement();
                 int rows = statementDelEnrollment.executeUpdate(deleteEnrollment);
@@ -95,6 +115,7 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
             }
         }
         while (newEnrolled.size() != 0){
+            //inserting the new enrollment and also increasing the studentCredits
             String insertEnrollment = String.format("insert into enrolled(studentId, courseId) values (%d, %d)",
                     obj.getStudentId(), newEnrolled.get(0));
             Statement statementInsertEnrollment = connection.createStatement();
@@ -110,6 +131,7 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
             statementInsertEnrollment.close();
         }
 
+        //updating the student with the new attributes
         Statement updateStatement = connection.createStatement();
         String updateStudent = String.format("update students set firstName=\"%s\", lastName=\"%s\", totalCredits=%d " +
                         "where studentId=%d", obj.getFirstName(), obj.getLastName(), studentCredits, obj.getStudentId());
@@ -119,6 +141,11 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
 
     }
 
+    /**
+     * before deleting the student, the enrollments associated to the student need to be deleted
+     * @param obj, student to be deleted
+     * @throws SQLException
+     */
     @Override
     public void delete(Student obj) throws SQLException {
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -135,6 +162,10 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
         connection.close();
     }
 
+
+    /**
+     * sorts the Student repo in ascending order by the number of credits
+     */
     public List<Student> sortRep() throws SQLException {
         List<Student> sortedStud = this.getAll();
         sortedStud.sort(Student::compareStudent);
