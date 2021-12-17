@@ -136,7 +136,9 @@ public class StudentMySQLRepository implements ICrudRepository<Student>{
     }
 
     public List<Student> sortRep() throws SQLException {
-        this.getAll().sort(Student::compareStudent);
-        return this.getAll();
+        List<Student> sortedStud = this.getAll();
+        sortedStud.sort(Student::compareStudent);
+        return sortedStud;
+
     }
 }

@@ -170,7 +170,8 @@ public class CourseMySQLRepository implements ICrudRepository<Course>{
     }
 
     public List<Course> sortRep() throws SQLException {
-        this.getAll().sort(Course::compareCourse);
-        return this.getAll();
+        List<Course> sortedC = this.getAll();
+        sortedC.sort(Course::compareCourse);
+        return sortedC;
     }
 }
